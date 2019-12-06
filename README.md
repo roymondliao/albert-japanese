@@ -1,3 +1,10 @@
+NOTE: currently under working.
+
+* dataset: jawiki-20191201-pages-articles-multistream.xml.bz2
+
+below is original README of bert-japanese.
+
+
 # BERT with SentencePiece for Japanese text.
 This is a repository of Japanese BERT model with SentencePiece tokenizer.  
 
