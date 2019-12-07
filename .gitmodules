@@ -6,4 +6,7 @@
 	url = https://github.com/attardi/wikiextractor.git
 [submodule "google-research"]
 	path = google-research
-	url = https://github.com/google-research/google-research.git
+	url = git@github.com:jnory/google-research.git
+[submodule "ALBERT"]
+	path = ALBERT
+	url = git@github.com:jnory/ALBERT.git
