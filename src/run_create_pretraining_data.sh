@@ -12,7 +12,7 @@ for DIR in $( find ${basedir}/wiki/ -mindepth 1 -type d ); do
   if [ -f ${out} ]; then
     continue
   fi
-  python google-research/albert/create_pretraining_data.py \
+  python ALBERT/create_pretraining_data.py \
     --input_file=${DIR}/all.txt \
     --output_file=${out} \
     --spm_model_file=${basedir}/model/wiki-ja.model \
