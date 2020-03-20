@@ -2,3 +2,6 @@ sentencepiece
 jupyter
 tensorflow<2.0.0
 pandas
+torch
+torchvision
+transformers
