@@ -12,7 +12,6 @@ def main(args):
     config = AlbertConfig(**data)
     model = AlbertForMaskedLM(config)
     model: AlbertForMaskedLM = load_tf_weights_in_albert(model, config, args.checkpoint)
-    model.albert
     model.save_pretrained(args.output)
 
 
