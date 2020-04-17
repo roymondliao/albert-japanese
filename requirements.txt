@@ -1,6 +1,6 @@
 sentencepiece
 jupyter
-tensorflow<2.0.0
+tensorflow==1.15.2
 pandas
 torch
 torchvision
