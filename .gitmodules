@@ -3,4 +3,4 @@
 	url = https://github.com/attardi/wikiextractor.git
 [submodule "ALBERT"]
 	path = ALBERT
-	url = https://github.com/jnory/ALBERT.git
+	url = https://github.com/alinear-corp/ALBERT.git
