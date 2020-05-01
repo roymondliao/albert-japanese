@@ -22,9 +22,9 @@ from __future__ import print_function
 
 import os
 import time
-from albert import classifier_utils
-from albert import fine_tuning_utils
-from albert import modeling
+from ALBERT import classifier_utils
+from ALBERT import fine_tuning_utils
+from ALBERT import modeling
 import tensorflow.compat.v1 as tf
 from tensorflow.contrib import cluster_resolver as contrib_cluster_resolver
 from tensorflow.contrib import tpu as contrib_tpu
