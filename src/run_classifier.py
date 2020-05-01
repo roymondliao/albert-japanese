@@ -20,13 +20,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import csv
 import os
 import time
-from ALBERT import classifier_utils
-from ALBERT import modeling
-from ALBERT import tokenization
-import tensorflow as tf
+from albert import classifier_utils
+from albert import fine_tuning_utils
+from albert import modeling
+import tensorflow.compat.v1 as tf
 from tensorflow.contrib import cluster_resolver as contrib_cluster_resolver
 from tensorflow.contrib import tpu as contrib_tpu
 
@@ -67,6 +66,10 @@ flags.DEFINE_string("cached_dir", None,
 flags.DEFINE_string(
     "init_checkpoint", None,
     "Initial checkpoint (usually from a pre-trained BERT model).")
+
+flags.DEFINE_string(
+    "albert_hub_module_handle", None,
+    "If set, the ALBERT hub module to use.")
 
 flags.DEFINE_bool(
     "do_lower_case", True,
@@ -161,19 +164,6 @@ class InputExample(object):
     self.label = label
 
 
-class PaddingInputExample(object):
-  """Fake example so the num input examples is a multiple of the batch size.
-
-  When running eval/predict on the TPU, we need to pad the number of examples
-  to be a multiple of the batch size, because the TPU requires a fixed batch
-  size. The alternative is to drop the last batch, which is bad because it means
-  the entire output data won't be generated.
-
-  We use this class instead of `None` because treating `None` as padding
-  battches could cause silent errors.
-  """
-
-
 class InputFeatures(object):
   """A single set of features of data."""
 
@@ -235,20 +225,24 @@ def main(_):
       "livedoor": LivedoorProcessor,
   }
 
-  tokenization.validate_case_matches_checkpoint(FLAGS.do_lower_case,
-                                                FLAGS.init_checkpoint)
-
   if not FLAGS.do_train and not FLAGS.do_eval and not FLAGS.do_predict:
     raise ValueError(
         "At least one of `do_train`, `do_eval` or `do_predict' must be True.")
 
-  albert_config = modeling.AlbertConfig.from_json_file(FLAGS.albert_config_file)
+  if not FLAGS.albert_config_file and not FLAGS.albert_hub_module_handle:
+    raise ValueError("At least one of `--albert_config_file` and "
+                     "`--albert_hub_module_handle` must be set")
 
-  if FLAGS.max_seq_length > albert_config.max_position_embeddings:
-    raise ValueError(
-        "Cannot use sequence length %d because the ALBERT model "
-        "was only trained up to sequence length %d" %
-        (FLAGS.max_seq_length, albert_config.max_position_embeddings))
+  if FLAGS.albert_config_file:
+    albert_config = modeling.AlbertConfig.from_json_file(
+        FLAGS.albert_config_file)
+    if FLAGS.max_seq_length > albert_config.max_position_embeddings:
+      raise ValueError(
+          "Cannot use sequence length %d because the ALBERT model "
+          "was only trained up to sequence length %d" %
+          (FLAGS.max_seq_length, albert_config.max_position_embeddings))
+  else:
+    albert_config = None  # Get the config from TF-Hub.
 
   tf.gfile.MakeDirs(FLAGS.output_dir)
 
@@ -263,9 +257,11 @@ def main(_):
 
   label_list = processor.get_labels()
 
-  tokenizer = tokenization.FullTokenizer(
-      vocab_file=FLAGS.vocab_file, do_lower_case=FLAGS.do_lower_case,
-      spm_model_file=FLAGS.spm_model_file)
+  tokenizer = fine_tuning_utils.create_vocab(
+      vocab_file=FLAGS.vocab_file,
+      do_lower_case=FLAGS.do_lower_case,
+      spm_model_file=FLAGS.spm_model_file,
+      hub_module=FLAGS.albert_hub_module_handle)
 
   tpu_cluster_resolver = None
   if FLAGS.use_tpu and FLAGS.tpu_name:
@@ -302,6 +298,7 @@ def main(_):
       use_tpu=FLAGS.use_tpu,
       use_one_hot_embeddings=FLAGS.use_tpu,
       task_name=task_name,
+      hub_module=FLAGS.albert_hub_module_handle,
       optimizer=FLAGS.optimizer)
 
   # If TPU is not available, this will fall back to normal Estimator on CPU
@@ -382,6 +379,32 @@ def main(_):
         use_tpu=FLAGS.use_tpu,
         bsz=FLAGS.eval_batch_size)
 
+    best_trial_info_file = os.path.join(FLAGS.output_dir, "best_trial.txt")
+
+    def _best_trial_info():
+      """Returns information about which checkpoints have been evaled so far."""
+      if tf.gfile.Exists(best_trial_info_file):
+        with tf.gfile.GFile(best_trial_info_file, "r") as best_info:
+          global_step, best_metric_global_step, metric_value = (
+              best_info.read().split(":"))
+          global_step = int(global_step)
+          best_metric_global_step = int(best_metric_global_step)
+          metric_value = float(metric_value)
+      else:
+        metric_value = -1
+        best_metric_global_step = -1
+        global_step = -1
+      tf.logging.info(
+          "Best trial info: Step: %s, Best Value Step: %s, "
+          "Best Value: %s", global_step, best_metric_global_step, metric_value)
+      return global_step, best_metric_global_step, metric_value
+
+    def _remove_checkpoint(checkpoint_path):
+      for ext in ["meta", "data-00000-of-00001", "index"]:
+        src_ckpt = checkpoint_path + ".{}".format(ext)
+        tf.logging.info("removing {}".format(src_ckpt))
+        tf.gfile.Remove(src_ckpt)
+
     def _find_valid_cands(curr_step):
       filenames = tf.gfile.ListDirectory(FLAGS.output_dir)
       candidates = []
@@ -389,12 +412,11 @@ def main(_):
         if filename.endswith(".index"):
           ckpt_name = filename[:-6]
           idx = ckpt_name.split("-")[-1]
-          if idx != "best" and int(idx) > curr_step:
+          if int(idx) > curr_step:
             candidates.append(filename)
       return candidates
 
     output_eval_file = os.path.join(FLAGS.output_dir, "eval_results.txt")
-    checkpoint_path = os.path.join(FLAGS.output_dir, "model.ckpt-best")
 
     if task_name == "sts-b":
       key_name = "pearson"
@@ -403,17 +425,7 @@ def main(_):
     else:
       key_name = "eval_accuracy"
 
-    if tf.gfile.Exists(checkpoint_path + ".index"):
-      result = estimator.evaluate(
-          input_fn=eval_input_fn,
-          steps=eval_steps,
-          checkpoint_path=checkpoint_path)
-      best_perf = result[key_name]
-      global_step = result["global_step"]
-    else:
-      global_step = -1
-      best_perf = -1
-      checkpoint_path = None
+    global_step, best_perf_global_step, best_perf = _best_trial_info()
     writer = tf.gfile.GFile(output_eval_file, "w")
     while global_step < FLAGS.train_step:
       steps_and_files = {}
@@ -432,16 +444,14 @@ def main(_):
       if not steps_and_files:
         tf.logging.info("found 0 file, global step: {}. Sleeping."
                         .format(global_step))
-        time.sleep(1)
+        time.sleep(60)
       else:
         for checkpoint in sorted(steps_and_files.items()):
           step, checkpoint_path = checkpoint
           if global_step >= step:
-            if len(_find_valid_cands(step)) > 1:
-              for ext in ["meta", "data-00000-of-00001", "index"]:
-                src_ckpt = checkpoint_path + ".{}".format(ext)
-                tf.logging.info("removing {}".format(src_ckpt))
-                tf.gfile.Remove(src_ckpt)
+            if (best_perf_global_step != step and
+                len(_find_valid_cands(step)) > 1):
+              _remove_checkpoint(checkpoint_path)
             continue
           result = estimator.evaluate(
               input_fn=eval_input_fn,
@@ -455,21 +465,25 @@ def main(_):
           writer.write("best = {}\n".format(best_perf))
           if result[key_name] > best_perf:
             best_perf = result[key_name]
-            for ext in ["meta", "data-00000-of-00001", "index"]:
-              src_ckpt = checkpoint_path + ".{}".format(ext)
-              tgt_ckpt = checkpoint_path.rsplit(
-                  "-", 1)[0] + "-best.{}".format(ext)
-              tf.logging.info("saving {} to {}".format(src_ckpt, tgt_ckpt))
-              tf.gfile.Copy(src_ckpt, tgt_ckpt, overwrite=True)
-              writer.write("saved {} to {}\n".format(src_ckpt, tgt_ckpt))
-
-          if len(_find_valid_cands(global_step)) > 1:
-            for ext in ["meta", "data-00000-of-00001", "index"]:
-              src_ckpt = checkpoint_path + ".{}".format(ext)
-              tf.logging.info("removing {}".format(src_ckpt))
-              tf.gfile.Remove(src_ckpt)
+            best_perf_global_step = global_step
+          elif len(_find_valid_cands(global_step)) > 1:
+            _remove_checkpoint(checkpoint_path)
           writer.write("=" * 50 + "\n")
+          writer.flush()
+          with tf.gfile.GFile(best_trial_info_file, "w") as best_info:
+            best_info.write("{}:{}:{}".format(
+                global_step, best_perf_global_step, best_perf))
     writer.close()
+
+    for ext in ["meta", "data-00000-of-00001", "index"]:
+      src_ckpt = "model.ckpt-{}.{}".format(best_perf_global_step, ext)
+      tgt_ckpt = "model.ckpt-best.{}".format(ext)
+      tf.logging.info("saving {} to {}".format(src_ckpt, tgt_ckpt))
+      tf.io.gfile.rename(
+          os.path.join(FLAGS.output_dir, src_ckpt),
+          os.path.join(FLAGS.output_dir, tgt_ckpt),
+          overwrite=True)
+
   if FLAGS.do_predict:
     predict_examples = processor.get_test_examples(FLAGS.data_dir)
     num_actual_predict_examples = len(predict_examples)
@@ -537,7 +551,6 @@ def main(_):
 if __name__ == "__main__":
   flags.mark_flag_as_required("data_dir")
   flags.mark_flag_as_required("task_name")
-  flags.mark_flag_as_required("vocab_file")
-  flags.mark_flag_as_required("albert_config_file")
+  flags.mark_flag_as_required("spm_model_file")
   flags.mark_flag_as_required("output_dir")
   tf.app.run()
