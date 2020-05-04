@@ -25,23 +25,23 @@ You can run the notebook on CPU (too slow) or GPU/TPU environments.
 
 The results are the following:
 - ALBERT with SentencePiece
-  ```
-                        precision    recall  f1-score   support
+    ```
+                  precision    recall  f1-score   support
   
-  dokujo-tsushin       0.99      0.91      0.95       178
-    it-life-hack       0.93      0.95      0.94       172
-   kaden-channel       0.96      0.98      0.97       176
-  livedoor-homme       0.83      0.86      0.85        95
-     movie-enter       0.98      0.99      0.99       158
-          peachy       0.91      0.93      0.92       174
-            smax       0.98      0.96      0.97       167
-    sports-watch       0.99      0.96      0.98       190
-      topic-news       0.94      0.97      0.95       163
-  
-        accuracy                           0.95      1473
-       macro avg       0.94      0.95      0.94      1473
-    weighted avg       0.95      0.95      0.95      1473
-  ```
+    dokujo-tsushin       1.00      0.93      0.96       178
+      it-life-hack       0.92      0.96      0.94       172
+     kaden-channel       0.95      0.98      0.97       176
+    livedoor-homme       0.90      0.82      0.86        95
+       movie-enter       0.96      0.98      0.97       158
+            peachy       0.95      0.97      0.96       174
+              smax       0.99      0.98      0.98       167
+      sports-watch       0.96      0.98      0.97       190
+        topic-news       0.96      0.94      0.95       163
+
+          accuracy                           0.96      1473
+         macro avg       0.95      0.95      0.95      1473
+      weighted avg       0.96      0.96      0.96      1473
+    ```
 - BERT with SentencePiece (from [original bert-japanese repository](https://github.com/yoheikikuta/bert-japanese#finetuning-with-bert-japanese))
   ```
                   precision    recall  f1-score   support
