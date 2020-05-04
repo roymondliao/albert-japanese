@@ -3,15 +3,15 @@ This is a repository of Japanese ALBERT model with SentencePiece tokenizer.
 (Note: this project is a fork of [bert-japanese](https://github.com/yoheikikuta/bert-japanese))
 
 To clone this repository together with the required
-[ALBERT](https://github.com/jnory/ALBERT) (my fork of original [ALBERT](https://github.com/google-research/ALBERT)) and 
+[ALBERT](https://github.com/alinear-corp/ALBERT) (our fork of original [ALBERT](https://github.com/google-research/ALBERT)) and 
 [WikiExtractor](https://github.com/attardi/wikiextractor):
 
-    git clone --recurse-submodules https://github.com/jnory/albert-japanese
+    git clone --recurse-submodules https://github.com/alinear-corp/albert-japanese
 
 ## Pretrained models
 We provide pretrained BERT model and trained SentencePiece model for Japanese text.
 Training data is the Japanese wikipedia corpus from [`Wikimedia Downloads`](https://dumps.wikimedia.org/).  
-Please download all objects in the following google drive to `model/` directory.
+The latest release is `v2`, you can download the pretrained model at:
 - **[`Pretrained BERT model and trained SentencePiece model`](https://drive.google.com/drive/folders/1qvVrG4u8F94694zSExj8gWWoiAqyAlC2?usp=sharing)** 
 
 Loss function during training is as below (after 1M steps the loss function massively changes because `max_seq_length` is changed from `128` to `512`.):
@@ -21,7 +21,7 @@ Loss function during training is as below (after 1M steps the loss function mass
 We also provide a simple Japanese text classification problem with [`livedoor ニュースコーパス`](https://www.rondhuit.com/download.html).  
 Try the following notebook to check the usability of finetuning.  
 You can run the notebook on CPU (too slow) or GPU/TPU environments.
-- **[finetune-to-livedoor-corpus.ipynb](https://github.com/yoheikikuta/bert-japanese/blob/master/notebook/finetune-to-livedoor-corpus.ipynb)**
+- **[finetune-to-livedoor-corpus.ipynb](https://github.com/alinear-corp/albert-japanese/blob/master/notebook/finetune-to-livedoor-corpus.ipynb)**
 
 The results are the following:
 - ALBERT with SentencePiece
@@ -76,9 +76,10 @@ bash src/file-preprocessing.sh
 The above scripts use the latest jawiki data and wikiextractor module, which are different from those used for the pretrained model.
 If you wanna prepare the same situation, use the following information:
 
-- albert-japanese: commit `de548d2cfdf1ca90a7872248e4b2adf98527da3e`
+- albert-japanese: commit `e420eab47a1d6d4775adc07e0b112aac8088d81b`
+- ALBERT: commit `08a848f08ec79d85f434b5c2fb6147e89f01bccb`
 - dataset: `jawiki-20191201-pages-articles-multistream.xml.bz2` in the [Google Drive](https://drive.google.com/drive/folders/1qvVrG4u8F94694zSExj8gWWoiAqyAlC2?usp=sharing)
-- wikiextractor: commit `3162bb6c3c9ebd2d15be507aa11d6fa818a454ac`
+- wikiextractor: commit `16186e290d9eb0eb3a3784c6c0635a9ed7e855c3`
 
 ### Training SentencePiece model
 Train a SentencePiece model using the preprocessed data.
@@ -101,4 +102,4 @@ bash src/run_create_pretraining_data.sh [extract_dir] [max_seq_length]
 You need GPU/TPU environment to pretrain a BERT model.  
 The following notebook provides the link to Colab notebook where you can run the scripts with TPUs.
 
-- **[pretraining.ipynb](https://github.com/jnory/albert-japanese/blob/master/notebook/pretraining.ipynb)**
+- **[pretraining.ipynb](https://github.com/alinear-corp/albert-japanese/blob/master/notebook/pretraining.ipynb)**
