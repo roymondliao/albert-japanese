@@ -1,7 +1,7 @@
 import json
 import logging
 
-from transformers import AlbertConfig, AlbertForMaskedLM, load_tf_weights_in_albert
+from transformers import AlbertConfig, AlbertForMaskedLM, load_tf_weights_in_albert, AlbertTokenizer
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -14,12 +14,16 @@ def main(args):
     model: AlbertForMaskedLM = load_tf_weights_in_albert(model, config, args.checkpoint)
     model.save_pretrained(args.output)
 
+    tokenizer = AlbertTokenizer.from_pretrained(args.spiece, keep_accents=True)
+    tokenizer.save_pretrained(args.output)
+
 
 def get_parser():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("config")
     parser.add_argument("checkpoint")
+    parser.add_argument("spiece")
     parser.add_argument("output")
     return parser
 
