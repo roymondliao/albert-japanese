@@ -17,6 +17,18 @@ The latest release is `v2`, you can download the pretrained model at:
 Loss function during training is as below (after 1M steps the loss function massively changes because `max_seq_length` is changed from `128` to `512`.):
 ![pretraining-loss](pretraining-loss.png)
 
+## Use pretrained model with transformers
+
+You can use the pretrained model with transformers.
+The model is uploaded to hagging face's repository.
+- **[ALINEAR/albert-japanese-v2](https://huggingface.co/ALINEAR/albert-japanese-v2)**
+
+For example, if you want to train AlbertForSequenceClassification, you can load the pretrained model by:
+
+    from transformers import AlbertTokenizer, AlbertForSequenceClassification
+    tokenizer = AlbertTokenizer.from_pretrained("ALINEAR/albert-japanese-v2")
+    model = AlbertForSequenceClassification.from_pretrained("ALINEAR/albert-japanese-v2", num_labels=...)
+
 ## Finetuning with BERT Japanese
 We also provide a simple Japanese text classification problem with [`livedoor ニュースコーパス`](https://www.rondhuit.com/download.html).  
 Try the following notebook to check the usability of finetuning.  
