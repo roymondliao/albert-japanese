@@ -2,12 +2,16 @@
 
 # Read data_text_dir path from a config file.
 CURDIR=$(cd $(dirname $0); pwd)
-source <(sed -n '/^\[DATA\]/,/^\[/p' ${CURDIR}/../config.ini | grep TEXTDIR | sed 's/ *= */=/g')
+# sed s/regexp/replacement/[flags]
+# s: replace string 
+# p: print string
+# g: copy string
+source <(sed -n '/^\[DATA\]/,/^\[/ p' ${CURDIR}/../config.ini | grep TEXTDIR | sed 's/ *= */=/ g')
 
 # Text preprocessing.
-# 1-1. Remove blank lines.
-# 1-2. Remove <doc id ... line and its next line (title of an article).
-# 1-3. Replace </doc> line with a blank line.
+# 1-1. Remove blank lines. --> /^$/
+# 1-2. Remove <doc id ... line and its next line (title of an article). --> /<doc id/,+1  +1表示該行 +n表示連帶 n 行
+# 1-3. Replace </doc> line with a blank line. --> s/<\/doc>//
 # 2-1. Remove spaces at the end of each line.
 # 2-2. Break line at each 。, but not at 。」 or 。）, position.
 # 2-3. Remove spaces at the head of each line.
