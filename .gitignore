@@ -8,6 +8,7 @@ model/*
 __pycache__
 .ipynb_checkpoints
 work/
+wandb/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
